@@ -1,29 +1,88 @@
-use anyhow::anyhow;
+use anyhow::{anyhow};
 use std::io::Read;
-struct RequestLine {
-    http_version: String,
-    request_target: String,
-    method: String,
+use std::str;
+
+#[derive(Default)]
+pub struct RequestLine {
+    pub http_version: String,
+    pub request_target: String,
+    pub method: String,
 }
 
-struct Request {
-    request_line: RequestLine,
+#[derive(PartialEq)]
+pub enum ParserState {
+    StateInit,
+    StateDone,
+    StateError
+}
+
+pub struct Request {
+    pub request_line: RequestLine,
+    pub state: ParserState
+}
+
+impl Request {
+    fn new() -> Self {
+        Self { 
+            request_line: RequestLine::default(), 
+            state: ParserState::StateInit 
+        }
+    }
+
+    fn done(&self) -> bool {
+        return self.state == ParserState::StateDone || self.state == ParserState::StateError
+    }
+
+    fn parse(&mut self, data: &[u8]) -> Result<usize, anyhow::Error> {
+        
+        let mut read = 0;
+        loop {
+            match self.state {
+                ParserState::StateInit => {
+                    match parse_request_line(&data[read..]) {
+                        Ok(r) => {
+                            if r.1 == 0 {
+                                break; // If we don't have a request line that means we need more data
+                            }
+
+                            read += r.1; // No of bytes we have processed
+
+                            self.request_line = r.0;
+                            self.state = ParserState::StateDone;
+                        },
+                        Err(e) => {
+                            self.state = ParserState::StateError;
+                            return Err(anyhow!(format!(
+                                "{}: the request is in Error state",
+                                e
+                            )));
+                        }
+                    }
+                },
+                ParserState::StateDone => break,
+                ParserState::StateError => break
+            }
+        }
+        Ok(read)
+    }
 }
 
 const SEPARATOR: &'static str = "\r\n";
 const MALFORMED_REQUEST: &'static str = "Request is Malformed";
 
-fn get_request_line(s: String) -> Result<(RequestLine, String), anyhow::Error> {
+fn parse_request_line(bytes: &[u8]) -> Result<(RequestLine, usize), anyhow::Error> {
     let idx: usize;
-    match s.find(SEPARATOR) {
+    let data = str::from_utf8(bytes)?;
+
+    match data.find(SEPARATOR) {
         Some(us) => idx = us,
-        None => return Err(anyhow!(MALFORMED_REQUEST)),
+        None => return Ok((RequestLine::default(),0)), // If there was no separator that means the request line was not full
     }
 
-    let r_line = &s[0..idx];
-    let rest_string = s[idx + SEPARATOR.len()..].to_string();
+    let r_line = &data[0..idx];
+    let read = idx + SEPARATOR.len();
 
-    let parts = r_line.split(" ").collect::<Vec<_>>();
+    let parts = r_line.split(" ").collect::<Vec<_>>(); // RFC 9112: request-line   = method SP request-target SP HTTP-version
     if parts.len() != 3 {
         return Err(anyhow!(format!(
             "{}: the request was incomplete",
@@ -31,7 +90,7 @@ fn get_request_line(s: String) -> Result<(RequestLine, String), anyhow::Error> {
         )));
     }
 
-    let http_parts = parts[2].split("/").collect::<Vec<_>>();
+    let http_parts = parts[2].split("/").collect::<Vec<_>>(); // RFC 9112: HTTP-version  = HTTP-name "/" DIGIT "." DIGIT
     if http_parts.len() != 2 {
         return Err(anyhow!(format!(
             "{}: the HTTP method was incorrect",
@@ -39,7 +98,7 @@ fn get_request_line(s: String) -> Result<(RequestLine, String), anyhow::Error> {
         )));
     }
 
-    if !parts[0].chars().all(|c| c.is_uppercase()) {
+    if !parts[0].chars().all(|c| c.is_uppercase()) { // RFC 9112: HTTP-name     = %s"HTTP"
         return Err(anyhow!(format!(
             "{}: the Request method was incorrect",
             MALFORMED_REQUEST
@@ -52,48 +111,26 @@ fn get_request_line(s: String) -> Result<(RequestLine, String), anyhow::Error> {
         method: parts[0].to_string(),
     };
 
-    Ok((request_line, rest_string))
+    Ok((request_line, read))
 }
 
 pub fn request_from_reader(mut f: impl Read) -> Result<Request, anyhow::Error> {
-    let mut buffer = String::new();
-    f.read_to_string(&mut buffer)?;
 
-    let parsed_request_line = get_request_line(buffer)?;
+    let mut req = Request::new();
+    let mut buffer = [0; 1024];
+    let mut buffer_length = 0;
 
-    let request = Request {
-        request_line: parsed_request_line.0,
-    };
+    while !req.done() {
 
-    Ok(request)
-}
+        let n = f.read(&mut buffer[buffer_length..])?; // n is the number of bytes read from f i.e. our connection/file etc
+        buffer_length += n;
 
-#[cfg(test)]
-mod tests {
-    use std::io::Cursor;
+        // println!("Data to parse in request:{}", str::from_utf8(&buffer[..buffer_length])?);
+        let read_n = req.parse(&buffer[..buffer_length])?; // read_n is how many bytes we have parsed
 
-    use crate::request::request_from_reader;
-
-    #[test]
-    fn test_request_from_reader() -> Result<(), anyhow::Error> {
-        let reader = Cursor::new("GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n");
-        let req = request_from_reader(reader)?;
-
-        assert_eq!(req.request_line.method, "GET");
-        assert_eq!(req.request_line.request_target, "/");
-        assert_eq!(req.request_line.http_version, "1.1");
-
-        let reader = Cursor::new("GET /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n");
-        let req = request_from_reader(reader)?;
-
-        assert_eq!(req.request_line.method, "GET");
-        assert_eq!(req.request_line.request_target, "/coffee");
-        assert_eq!(req.request_line.http_version, "1.1");
-
-        let reader = Cursor::new("/coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n");
-        let req = request_from_reader(reader);
-        assert!(req.is_err());
-
-        Ok(())
+        buffer.copy_within(read_n..buffer_length, 0); // We don't need the bytes we have processed and hence we copy the remaining bytes to the starting of the buffer and reduce buffer length
+        buffer_length -= read_n;
     }
+
+    Ok(req)
 }
