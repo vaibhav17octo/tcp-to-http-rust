@@ -1,23 +1,35 @@
 use anyhow::anyhow;
 use std::collections::HashMap;
 
-pub struct Headers(HashMap<String, String>);
-
+pub struct Headers{
+    headers: HashMap<String, String>
+}
+    
 const SEPARATOR: &'static str = "\r\n";
 const MALFORMED_HEADER: &'static str = "HEADER is Malformed";
 const MALFORMED_FIELD_NAME: &'static str = "Field value is Malformed";
 
 impl Headers {
     pub fn new() -> Self {
-        Headers(HashMap::new())
+        Headers{
+            headers: HashMap::new()
+        }
     }
 
     fn set(&mut self, key: String, value: String) {
-        self.0.insert(key.to_lowercase(), value);
+
+        // RFC 9110 5.2 If field-name exists then we add the value with , separated
+        self.headers
+        .entry(key.to_lowercase())
+        .and_modify(|current_value| {
+            let add_to_current = String::from(",") + &value;
+            current_value.push_str(&add_to_current);
+        }).
+        or_insert(value);
     }
 
     pub fn get(&self, key: &String) -> Option<&String> {
-        let value = self.0.get(&key.to_lowercase());
+        let value = self.headers.get(&key.to_lowercase());
         return value;
     }
 
