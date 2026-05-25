@@ -12,13 +12,33 @@ impl Headers {
         Headers(HashMap::new())
     }
 
-    fn add_header(&mut self, key: String, value: String) {
-        self.0.insert(key, value);
+    fn set(&mut self, key: String, value: String) {
+        self.0.insert(key.to_lowercase(), value);
     }
 
-    pub fn get(&self, key: String) -> Option<&String> {
-        let value = self.0.get(&key);
+    pub fn get(&self, key: &String) -> Option<&String> {
+        let value = self.0.get(&key.to_lowercase());
         return value;
+    }
+
+    pub fn is_valid_field_name(&self, field_name: &String) -> bool {
+        // RFC 9112 field name should not have any whitespaces before or after
+        if field_name.ends_with(" ") || field_name.starts_with(" ") {
+            return false;
+        }
+
+        // RFC 9110 field name is a token
+        // Uppercase letters: A-Z
+        // Lowercase letters: a-z
+        // Digits: 0-9
+        // Special characters: !, #, $, %, &, ', *, +, -, ., ^, _, `, |, ~
+        for ch in field_name.chars() {
+            if !ch.is_alphanumeric() && !"!#$%&'*+-.^_`|~".contains(ch) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     pub fn parse(&mut self, buffer: &[u8]) -> Result<(usize, bool), anyhow::Error> {
@@ -44,15 +64,14 @@ impl Headers {
                     let field_name = parts.0.to_string();
                     let field_value = parts.1.trim().to_string(); // RFC 9112 Field value can have any number of whitespaces
 
-                    // RFC 9112 field name should not have any whitespaces before or after
-                    if field_name.ends_with(" ") || field_name.starts_with(" ") {
-                        return Err(anyhow!(format!("{}", MALFORMED_FIELD_NAME)));
+                    if !self.is_valid_field_name(&field_name) {
+                        return Err(anyhow!(format!("{} Field name: {} ", MALFORMED_FIELD_NAME, field_name)));
                     }
 
                     read += data[read..read + idx].len() + SEPARATOR.len();
                     println!("read at {}", read);
 
-                    self.add_header(field_name, field_value);
+                    self.set(field_name, field_value);
                 }
                 None => {
                     return Err(anyhow!(format!("{}", MALFORMED_HEADER)));
