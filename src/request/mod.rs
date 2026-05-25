@@ -1,4 +1,4 @@
-use anyhow::{anyhow};
+use anyhow::anyhow;
 use std::io::Read;
 use std::str;
 
@@ -13,28 +13,27 @@ pub struct RequestLine {
 pub enum ParserState {
     StateInit,
     StateDone,
-    StateError
+    StateError,
 }
 
 pub struct Request {
     pub request_line: RequestLine,
-    pub state: ParserState
+    pub state: ParserState,
 }
 
 impl Request {
     fn new() -> Self {
-        Self { 
-            request_line: RequestLine::default(), 
-            state: ParserState::StateInit 
+        Self {
+            request_line: RequestLine::default(),
+            state: ParserState::StateInit,
         }
     }
 
     fn done(&self) -> bool {
-        return self.state == ParserState::StateDone || self.state == ParserState::StateError
+        return self.state == ParserState::StateDone || self.state == ParserState::StateError;
     }
 
     fn parse(&mut self, data: &[u8]) -> Result<usize, anyhow::Error> {
-        
         let mut read = 0;
         loop {
             match self.state {
@@ -49,18 +48,15 @@ impl Request {
 
                             self.request_line = r.0;
                             self.state = ParserState::StateDone;
-                        },
+                        }
                         Err(e) => {
                             self.state = ParserState::StateError;
-                            return Err(anyhow!(format!(
-                                "{}: the request is in Error state",
-                                e
-                            )));
+                            return Err(anyhow!(format!("{}: the request is in Error state", e)));
                         }
                     }
-                },
+                }
                 ParserState::StateDone => break,
-                ParserState::StateError => break
+                ParserState::StateError => break,
             }
         }
         Ok(read)
@@ -76,7 +72,7 @@ fn parse_request_line(bytes: &[u8]) -> Result<(RequestLine, usize), anyhow::Erro
 
     match data.find(SEPARATOR) {
         Some(us) => idx = us,
-        None => return Ok((RequestLine::default(),0)), // If there was no separator that means the request line was not full
+        None => return Ok((RequestLine::default(), 0)), // If there was no separator that means the request line was not full
     }
 
     let r_line = &data[0..idx];
@@ -98,7 +94,8 @@ fn parse_request_line(bytes: &[u8]) -> Result<(RequestLine, usize), anyhow::Erro
         )));
     }
 
-    if !parts[0].chars().all(|c| c.is_uppercase()) { // RFC 9112: HTTP-name     = %s"HTTP"
+    if !parts[0].chars().all(|c| c.is_uppercase()) {
+        // RFC 9112: HTTP-name     = %s"HTTP"
         return Err(anyhow!(format!(
             "{}: the Request method was incorrect",
             MALFORMED_REQUEST
@@ -115,13 +112,11 @@ fn parse_request_line(bytes: &[u8]) -> Result<(RequestLine, usize), anyhow::Erro
 }
 
 pub fn request_from_reader(mut f: impl Read) -> Result<Request, anyhow::Error> {
-
     let mut req = Request::new();
     let mut buffer = [0; 1024];
     let mut buffer_length = 0;
 
     while !req.done() {
-
         let n = f.read(&mut buffer[buffer_length..])?; // n is the number of bytes read from f i.e. our connection/file etc
         buffer_length += n;
 

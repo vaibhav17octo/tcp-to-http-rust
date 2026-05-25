@@ -3,7 +3,7 @@ use std::io::{self, Read};
 struct SlowReader {
     data: Vec<u8>,
     pos: usize,
-    read_size: usize
+    read_size: usize,
 }
 
 impl Read for SlowReader {
@@ -12,7 +12,7 @@ impl Read for SlowReader {
             return Ok(0); // Reached EOL
         }
 
-        let idx = self.pos+self.read_size;
+        let idx = self.pos + self.read_size;
         buf[..self.read_size].copy_from_slice(&self.data[self.pos..idx]);
 
         self.pos += self.read_size;
@@ -23,10 +23,9 @@ impl Read for SlowReader {
 
 #[cfg(test)]
 mod tests {
+    use crate::SlowReader;
     use std::io::Cursor;
     use tcp_to_http::request::request_from_reader;
-
-use crate::SlowReader;
 
     #[test]
     fn test_request_from_reader() -> Result<(), anyhow::Error> {
