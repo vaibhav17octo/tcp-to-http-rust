@@ -155,6 +155,15 @@ mod tests {
             None => return Err(anyhow!("User-Agent not found")),
         }
 
+        let reader = SlowReader {
+            data: b"GET / HTTP/1.1\r\nHoSt: localhost:42069\r\nUsEr-AgEnT: curl\r\n".to_vec(),
+            pos: 0,
+            read_size: 3,
+        };
+
+        let req = request_from_reader(reader);
+        assert!(req.is_err());
+
         Ok(())
     }
 }

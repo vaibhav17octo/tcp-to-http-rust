@@ -141,6 +141,11 @@ pub fn request_from_reader(mut f: impl Read) -> Result<Request, anyhow::Error> {
 
     while !req.done() {
         let n = f.read(&mut buffer[buffer_length..])?; // n is the number of bytes read from f i.e. our connection/file etc
+
+        if n == 0 && !req.done() {
+            return Err(anyhow!("Malformed request"));
+        }
+        
         buffer_length += n;
 
         // println!("Data to parse in request:{}", str::from_utf8(&buffer[..buffer_length])?);
