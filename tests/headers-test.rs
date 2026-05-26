@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
     use anyhow::anyhow;
-    use tcp_to_http::headers;
+    use tcp_to_http::request::headers;
 
     #[test]
     fn test_parse() -> Result<(), anyhow::Error> {

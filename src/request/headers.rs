@@ -2,6 +2,10 @@ use anyhow::anyhow;
 use core::fmt;
 use std::collections::HashMap;
 
+use crate::config::SEPARATOR;
+use crate::config::MALFORMED_FIELD_NAME;
+use crate::config::MALFORMED_HEADER;
+
 pub struct Headers{
     headers: HashMap<String, String>
 }
@@ -16,10 +20,6 @@ impl fmt::Display for Headers {
         write!(f, "{}", output)
     }
 }
-    
-const SEPARATOR: &'static str = "\r\n";
-const MALFORMED_HEADER: &'static str = "HEADER is Malformed";
-const MALFORMED_FIELD_NAME: &'static str = "Field value is Malformed";
 
 impl Headers {
     pub fn new() -> Self {

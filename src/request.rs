@@ -1,27 +1,15 @@
+pub mod request_line;
+pub mod headers;
+
+use core::fmt;
 use anyhow::anyhow;
 use std::io::Read;
-use std::str;
-use crate::headers::Headers;
-use core::fmt;
 
-#[derive(Default)]
-pub struct RequestLine {
-    pub http_version: String,
-    pub request_target: String,
-    pub method: String,
-}
+use request_line::RequestLine;
+use headers::Headers;
 
-impl fmt::Display for RequestLine {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "Request line:\n- Method: {}\n- Target: {}\n- Version: {}",
-            self.method,
-            self.request_target,
-            self.http_version
-        )
-    }
-}
+use crate::config::MALFORMED_REQUEST;
+use crate::config::ERROR_STATE;
 
 #[derive(PartialEq)]
 pub enum ParserState {
@@ -62,7 +50,7 @@ impl Request {
             let current_data = &data[read..];
             match self.state {
                 ParserState::StateInit => {
-                    match parse_request_line(current_data) {
+                    match RequestLine::parse_request_line(current_data) {
                         Ok(r) => {
                             if r.1 == 0 {
                                 break; // If we don't have a request line that means we need more data
@@ -75,7 +63,7 @@ impl Request {
                         }
                         Err(e) => {
                             self.state = ParserState::StateError;
-                            return Err(anyhow!(format!("{}: the request is in Error state", e)));
+                            return Err(anyhow!(format!("{}: {}", ERROR_STATE, e)));
                         }
                     }
                 },
@@ -93,7 +81,7 @@ impl Request {
                         },
                         Err(e) => {
                             self.state = ParserState::StateError;
-                            return Err(anyhow!(format!("{}: the request is in Error state", e)));
+                            return Err(anyhow!(format!("{}: {}", ERROR_STATE, e)));
                         }
                     }
                 },
@@ -105,54 +93,6 @@ impl Request {
     }
 }
 
-const SEPARATOR: &'static str = "\r\n";
-const MALFORMED_REQUEST: &'static str = "Request is Malformed";
-
-fn parse_request_line(bytes: &[u8]) -> Result<(RequestLine, usize), anyhow::Error> {
-    let idx: usize;
-    let data = str::from_utf8(bytes)?;
-
-    match data.find(SEPARATOR) {
-        Some(us) => idx = us,
-        None => return Ok((RequestLine::default(), 0)), // If there was no separator that means the request line was not full
-    }
-
-    let r_line = &data[0..idx];
-    let read = idx + SEPARATOR.len();
-
-    let parts = r_line.split(" ").collect::<Vec<_>>(); // RFC 9112: request-line   = method SP request-target SP HTTP-version
-    if parts.len() != 3 {
-        return Err(anyhow!(format!(
-            "{}: the request was incomplete",
-            MALFORMED_REQUEST
-        )));
-    }
-
-    let http_parts = parts[2].split("/").collect::<Vec<_>>(); // RFC 9112: HTTP-version  = HTTP-name "/" DIGIT "." DIGIT
-    if http_parts.len() != 2 {
-        return Err(anyhow!(format!(
-            "{}: the HTTP method was incorrect",
-            MALFORMED_REQUEST
-        )));
-    }
-
-    if !parts[0].chars().all(|c| c.is_uppercase()) {
-        // RFC 9112: HTTP-name     = %s"HTTP"
-        return Err(anyhow!(format!(
-            "{}: the Request method was incorrect",
-            MALFORMED_REQUEST
-        )));
-    }
-
-    let request_line = RequestLine {
-        http_version: http_parts[1].to_string(),
-        request_target: parts[1].to_string(),
-        method: parts[0].to_string(),
-    };
-
-    Ok((request_line, read))
-}
-
 pub fn request_from_reader(mut f: impl Read) -> Result<Request, anyhow::Error> {
     let mut req = Request::new();
     let mut buffer = [0; 1024];
@@ -162,7 +102,7 @@ pub fn request_from_reader(mut f: impl Read) -> Result<Request, anyhow::Error> {
         let n = f.read(&mut buffer[buffer_length..])?; // n is the number of bytes read from f i.e. our connection/file etc
 
         if n == 0 && !req.done() {
-            return Err(anyhow!("Malformed request"));
+            return Err(anyhow!("{}", MALFORMED_REQUEST));
         }
 
         buffer_length += n;
