@@ -9,14 +9,7 @@ fn main() -> Result<(), anyhow::Error> {
             Ok(s) => {
                 let request = request_from_reader(s)?;
                 
-                println!("Request line:
-                    - Method: {}
-                    - Target: {}
-                    - Version: {}", 
-                    request.request_line.method,
-                    request.request_line.request_target,
-                    request.request_line.http_version
-                );
+                println!("{}", &request);
             },
             Err(e) => println!("{}", e),
         }

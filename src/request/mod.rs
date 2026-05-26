@@ -2,12 +2,25 @@ use anyhow::anyhow;
 use std::io::Read;
 use std::str;
 use crate::headers::Headers;
+use core::fmt;
 
 #[derive(Default)]
 pub struct RequestLine {
     pub http_version: String,
     pub request_target: String,
     pub method: String,
+}
+
+impl fmt::Display for RequestLine {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "Request line:\n- Method: {}\n- Target: {}\n- Version: {}",
+            self.method,
+            self.request_target,
+            self.http_version
+        )
+    }
 }
 
 #[derive(PartialEq)]
@@ -22,6 +35,12 @@ pub struct Request {
     pub request_line: RequestLine,
     pub headers: Headers,
     pub state: ParserState,
+}
+
+impl fmt::Display for Request {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}\n{}", &self.request_line, &self.headers)
+    }
 }
 
 impl Request {
@@ -145,7 +164,7 @@ pub fn request_from_reader(mut f: impl Read) -> Result<Request, anyhow::Error> {
         if n == 0 && !req.done() {
             return Err(anyhow!("Malformed request"));
         }
-        
+
         buffer_length += n;
 
         // println!("Data to parse in request:{}", str::from_utf8(&buffer[..buffer_length])?);

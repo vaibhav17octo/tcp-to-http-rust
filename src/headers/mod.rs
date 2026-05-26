@@ -1,8 +1,20 @@
 use anyhow::anyhow;
+use core::fmt;
 use std::collections::HashMap;
 
 pub struct Headers{
     headers: HashMap<String, String>
+}
+
+impl fmt::Display for Headers {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let mut output: String = "Headers:\n".to_string();
+        for (key, value) in &self.headers {
+            let add = format!("- {}, {}\n", key, value);
+            output.push_str(&add[..]);
+        }
+        write!(f, "{}", output)
+    }
 }
     
 const SEPARATOR: &'static str = "\r\n";
