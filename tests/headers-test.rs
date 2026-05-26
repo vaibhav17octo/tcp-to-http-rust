@@ -22,7 +22,7 @@ mod tests {
         let n = http_headers.parse(data);
         assert!(n.is_err());
 
-        
+        // Valid header with OWS in field value
         let mut http_headers = headers::Headers::new();
         let data = b"Host:    localhost:42069   \r\n\r\n";
         let n = http_headers.parse(data)?;
@@ -33,7 +33,7 @@ mod tests {
         }
         assert_eq!(n.1, true);
 
-        //
+        // Valid header with multiple header values
         let mut http_headers = headers::Headers::new();
         let data = b"Host: localhost:42069\r\nUser-Agent: curl\r\n\r\n";
         let n = http_headers.parse(data)?;
