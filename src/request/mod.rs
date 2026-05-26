@@ -1,6 +1,7 @@
 use anyhow::anyhow;
 use std::io::Read;
 use std::str;
+use crate::headers::Headers;
 
 #[derive(Default)]
 pub struct RequestLine {
@@ -12,12 +13,14 @@ pub struct RequestLine {
 #[derive(PartialEq)]
 pub enum ParserState {
     StateInit,
+    StateHeaders,
     StateDone,
     StateError,
 }
 
 pub struct Request {
     pub request_line: RequestLine,
+    pub headers: Headers,
     pub state: ParserState,
 }
 
@@ -25,6 +28,7 @@ impl Request {
     fn new() -> Self {
         Self {
             request_line: RequestLine::default(),
+            headers: Headers::new(),
             state: ParserState::StateInit,
         }
     }
@@ -36,9 +40,10 @@ impl Request {
     fn parse(&mut self, data: &[u8]) -> Result<usize, anyhow::Error> {
         let mut read = 0;
         loop {
+            let current_data = &data[read..];
             match self.state {
                 ParserState::StateInit => {
-                    match parse_request_line(&data[read..]) {
+                    match parse_request_line(current_data) {
                         Ok(r) => {
                             if r.1 == 0 {
                                 break; // If we don't have a request line that means we need more data
@@ -47,14 +52,32 @@ impl Request {
                             read += r.1; // No of bytes we have processed
 
                             self.request_line = r.0;
-                            self.state = ParserState::StateDone;
+                            self.state = ParserState::StateHeaders;
                         }
                         Err(e) => {
                             self.state = ParserState::StateError;
                             return Err(anyhow!(format!("{}: the request is in Error state", e)));
                         }
                     }
-                }
+                },
+                ParserState::StateHeaders => {
+                    match self.headers.parse(current_data) {
+                        Ok(r) => {
+                            if r.0 == 0 {
+                                break;
+                            }
+
+                            read += r.0; // No of bytes we have processed
+                            if r.1 {
+                                self.state = ParserState::StateDone;
+                            }
+                        },
+                        Err(e) => {
+                            self.state = ParserState::StateError;
+                            return Err(anyhow!(format!("{}: the request is in Error state", e)));
+                        }
+                    }
+                },
                 ParserState::StateDone => break,
                 ParserState::StateError => break,
             }

@@ -55,19 +55,22 @@ impl Headers {
 
     pub fn parse(&mut self, buffer: &[u8]) -> Result<(usize, bool), anyhow::Error> {
         let data = str::from_utf8(buffer)?;
-        println!("Data length{}", data.len());
         let mut idx: usize;
         let mut read = 0;
+        let mut done: bool = false;
         loop {
             match data[read..].find(SEPARATOR) {
-                Some(us) => idx = us,
-                None => return Ok((0, false)), // If there was no separator that means the request line was not full
+                Some(us) => {
+                    idx = us
+                },
+                None => break , // If there was no separator that means the request line was not full
             }
 
-            // if SEPERATOR is at the start of the data, you've found the end of the headers, so return the proper values immediately.
+            // if SEPERATOR is at the start of the data, you've found the end of the headers and the request is done
             if idx == 0 {
                 read += SEPARATOR.len();
-                return Ok((read, true));
+                done = true;
+                break;
             }
 
             // RFC 9112: field-line   = field-name ":" OWS field-value OWS
@@ -81,7 +84,6 @@ impl Headers {
                     }
 
                     read += data[read..read + idx].len() + SEPARATOR.len();
-                    println!("read at {}", read);
 
                     self.set(field_name, field_value);
                 }
@@ -90,5 +92,7 @@ impl Headers {
                 }
             }
         }
+
+        return Ok((read, done));
     }
 }
