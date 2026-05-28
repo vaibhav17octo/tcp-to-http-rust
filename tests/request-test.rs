@@ -164,6 +164,34 @@ mod tests {
         let req = request_from_reader(reader);
         assert!(req.is_err());
 
+        let reader = SlowReader {
+            data: b"POST /submit HTTP/1.1\r\nHost: localhost:42069\r\nContent-Length: 13\r\n\r\nhello world!\n".to_vec(),
+            pos: 0,
+            read_size: 3,
+        };
+
+        let req = request_from_reader(reader)?;
+        assert_eq!(req.body.get_body(), b"hello world!\n");
+
+
+        let reader = SlowReader {
+            data: b"POST /submit HTTP/1.1\r\nHost: localhost:42069\r\nContent-Length: 20\r\n\r\npartial content\n".to_vec(),
+            pos: 0,
+            read_size: 3,
+        };
+
+        let req = request_from_reader(reader);
+        assert!(req.is_err());
+
+        let reader = SlowReader {
+            data: b"POST /submit HTTP/1.1\r\nHost: localhost:42069\r\nContent-Length: 0\r\n\r\n".to_vec(),
+            pos: 0,
+            read_size: 3,
+        };
+
+        let req = request_from_reader(reader)?;
+        assert_eq!(req.body.get_body(), b"");
+
         Ok(())
     }
 }

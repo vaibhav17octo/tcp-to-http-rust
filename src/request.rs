@@ -1,5 +1,6 @@
 pub mod request_line;
 pub mod headers;
+pub mod body;
 
 use core::fmt;
 use anyhow::anyhow;
@@ -7,6 +8,7 @@ use std::io::Read;
 
 use request_line::RequestLine;
 use headers::Headers;
+use body::Body;
 
 use crate::config::MALFORMED_REQUEST;
 use crate::config::ERROR_STATE;
@@ -16,12 +18,14 @@ pub enum ParserState {
     StateInit,
     StateHeaders,
     StateDone,
+    StateBody,
     StateError,
 }
 
 pub struct Request {
     pub request_line: RequestLine,
     pub headers: Headers,
+    pub body: Body,
     pub state: ParserState,
 }
 
@@ -36,6 +40,7 @@ impl Request {
         Self {
             request_line: RequestLine::default(),
             headers: Headers::new(),
+            body: Body::new(),
             state: ParserState::StateInit,
         }
     }
@@ -76,13 +81,40 @@ impl Request {
 
                             read += r.0; // No of bytes we have processed
                             if r.1 {
-                                self.state = ParserState::StateDone;
+                                self.state = ParserState::StateBody;
                             }
                         },
                         Err(e) => {
                             self.state = ParserState::StateError;
                             return Err(anyhow!(format!("{}: {}", ERROR_STATE, e)));
                         }
+                    }
+                },
+                ParserState::StateBody => {
+                    match self.headers.get(&"content-length".to_string()) {
+                        Some(n) => self.body.set_content_length(n.parse().expect("Invalid value for content length")),
+                        None =>  {
+                            break // There's no body to be read
+                            self.state = ParserState::StateDone;
+                        }
+                    }
+
+                    match self.body.parse_body(current_data) {
+                        Ok(n) => {
+                            println!("Read in parse body: {}", n.0);
+                            read += n.0;
+                            if n.1 {
+                                self.state = ParserState::StateDone;
+                            }
+                        }
+                        Err(e) => {
+                            self.state = ParserState::StateError;
+                            return Err(e)
+                        }
+                    }
+
+                    if current_data == b"" {
+                        break;
                     }
                 },
                 ParserState::StateDone => break,
