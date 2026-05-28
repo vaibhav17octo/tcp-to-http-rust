@@ -1,8 +1,15 @@
+use core::fmt;
 use anyhow::anyhow;
 
 pub struct Body {
     body: Vec<u8>,
     content_length: usize
+}
+
+impl fmt::Display for Body {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Body:\n{:?}", String::from_utf8_lossy(&self.body))
+    }
 }
 
 impl Body {

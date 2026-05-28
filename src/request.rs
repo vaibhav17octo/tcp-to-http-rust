@@ -31,7 +31,7 @@ pub struct Request {
 
 impl fmt::Display for Request {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}\n{}", &self.request_line, &self.headers)
+        write!(f, "{}\n{}\n{}", &self.request_line, &self.headers, &self.body)
     }
 }
 
@@ -101,7 +101,6 @@ impl Request {
 
                     match self.body.parse_body(current_data) {
                         Ok(n) => {
-                            println!("Read in parse body: {}", n.0);
                             read += n.0;
                             if n.1 {
                                 self.state = ParserState::StateDone;
