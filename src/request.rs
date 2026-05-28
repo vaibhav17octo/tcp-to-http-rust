@@ -1,17 +1,17 @@
-pub mod request_line;
-pub mod headers;
 pub mod body;
+pub mod headers;
+pub mod request_line;
 
-use core::fmt;
 use anyhow::anyhow;
+use core::fmt;
 use std::io::Read;
 
-use request_line::RequestLine;
-use headers::Headers;
 use body::Body;
+use headers::Headers;
+use request_line::RequestLine;
 
-use crate::config::MALFORMED_REQUEST;
 use crate::config::ERROR_STATE;
+use crate::config::MALFORMED_REQUEST;
 
 #[derive(PartialEq)]
 pub enum ParserState {
@@ -31,7 +31,11 @@ pub struct Request {
 
 impl fmt::Display for Request {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}\n{}\n{}", &self.request_line, &self.headers, &self.body)
+        write!(
+            f,
+            "{}\n{}\n{}",
+            &self.request_line, &self.headers, &self.body
+        )
     }
 }
 
@@ -71,7 +75,7 @@ impl Request {
                             return Err(anyhow!(format!("{}: {}", ERROR_STATE, e)));
                         }
                     }
-                },
+                }
                 ParserState::StateHeaders => {
                     match self.headers.parse(current_data) {
                         Ok(r) => {
@@ -83,17 +87,19 @@ impl Request {
                             if r.1 {
                                 self.state = ParserState::StateBody;
                             }
-                        },
+                        }
                         Err(e) => {
                             self.state = ParserState::StateError;
                             return Err(anyhow!(format!("{}: {}", ERROR_STATE, e)));
                         }
                     }
-                },
+                }
                 ParserState::StateBody => {
                     match self.headers.get(&"content-length".to_string()) {
-                        Some(n) => self.body.set_content_length(n.parse().expect("Invalid value for content length")),
-                        None =>  {
+                        Some(n) => self.body.set_content_length(
+                            n.parse().expect("Invalid value for content length"),
+                        ),
+                        None => {
                             break // There's no body to be read
                             self.state = ParserState::StateDone;
                         }
@@ -108,14 +114,14 @@ impl Request {
                         }
                         Err(e) => {
                             self.state = ParserState::StateError;
-                            return Err(e)
+                            return Err(e);
                         }
                     }
 
                     if current_data == b"" {
                         break;
                     }
-                },
+                }
                 ParserState::StateDone => break,
                 ParserState::StateError => break,
             }

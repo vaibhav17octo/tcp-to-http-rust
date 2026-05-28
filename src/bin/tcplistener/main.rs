@@ -8,12 +8,12 @@ fn main() -> Result<(), anyhow::Error> {
         match stream {
             Ok(s) => {
                 let request = request_from_reader(s)?;
-                
+
                 println!("{}", &request);
-            },
+            }
             Err(e) => println!("{}", e),
         }
     }
-   
+
     Ok(())
 }

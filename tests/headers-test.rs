@@ -12,7 +12,7 @@ mod tests {
         assert_eq!(25, n.0);
         match http_headers.get(&"Host".to_string()) {
             Some(val) => assert_eq!(*val, "localhost:42069".to_string()),
-            None => return Err(anyhow!(format!("Value not found")))
+            None => return Err(anyhow!(format!("Value not found"))),
         }
         assert_eq!(n.1, true);
 
@@ -29,7 +29,7 @@ mod tests {
         assert_eq!(31, n.0);
         match http_headers.get(&"Host".to_string()) {
             Some(val) => assert_eq!(*val, "localhost:42069".to_string()),
-            None => return Err(anyhow!(format!("Value not found")))
+            None => return Err(anyhow!(format!("Value not found"))),
         }
         assert_eq!(n.1, true);
 
@@ -61,10 +61,10 @@ mod tests {
         assert_eq!(49, n.0);
         match http_headers.get(&"Host".to_string()) {
             Some(val) => assert_eq!(*val, "localhost:42069,localhost:42069".to_string()),
-            None => return Err(anyhow!(format!("Value not found")))
+            None => return Err(anyhow!(format!("Value not found"))),
         }
         assert_eq!(n.1, true);
-        
+
         Ok(())
     }
 }

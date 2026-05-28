@@ -1,9 +1,9 @@
-use core::fmt;
 use anyhow::anyhow;
+use core::fmt;
 
 pub struct Body {
     body: Vec<u8>,
-    content_length: usize
+    content_length: usize,
 }
 
 impl fmt::Display for Body {
@@ -16,7 +16,7 @@ impl Body {
     pub fn new() -> Self {
         Body {
             body: Vec::new(),
-            content_length: 0
+            content_length: 0,
         }
     }
 
@@ -33,11 +33,12 @@ impl Body {
         self.body.append(&mut temp);
 
         if self.content_length == self.body.len() {
-            return Ok((temp.len(), true))
+            return Ok((temp.len(), true));
+        } else if self.content_length < self.body.len() {
+            return Err(anyhow!(
+                "Length of the body is larger than what was provided in content length"
+            ));
         }
-        else if self.content_length < self.body.len() {
-            return Err(anyhow!("Length of the body is larger than what was provided in content length"))
-        } 
 
         Ok((data.len(), false))
     }

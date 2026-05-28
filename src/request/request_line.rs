@@ -1,11 +1,11 @@
 use anyhow::anyhow;
-use std::str;
 use core::fmt;
+use std::str;
 
-use crate::config::SEPARATOR;
-use crate::config::MALFORMED_REQUEST_LINE;
 use crate::config::MALFORMED_HTTP_VERSION;
 use crate::config::MALFORMED_METHOD;
+use crate::config::MALFORMED_REQUEST_LINE;
+use crate::config::SEPARATOR;
 
 #[derive(Default)]
 pub struct RequestLine {
@@ -19,9 +19,7 @@ impl fmt::Display for RequestLine {
         write!(
             f,
             "Request line:\n- Method: {}\n- Target: {}\n- Version: {}",
-            self.method,
-            self.request_target,
-            self.http_version
+            self.method, self.request_target, self.http_version
         )
     }
 }
@@ -72,10 +70,3 @@ impl RequestLine {
         Ok((request_line, read))
     }
 }
-
-
-
-
-
-
-

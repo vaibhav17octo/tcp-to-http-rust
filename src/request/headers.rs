@@ -2,12 +2,12 @@ use anyhow::anyhow;
 use core::fmt;
 use std::collections::HashMap;
 
-use crate::config::SEPARATOR;
 use crate::config::MALFORMED_FIELD_NAME;
 use crate::config::MALFORMED_HEADER;
+use crate::config::SEPARATOR;
 
-pub struct Headers{
-    headers: HashMap<String, String>
+pub struct Headers {
+    headers: HashMap<String, String>,
 }
 
 impl fmt::Display for Headers {
@@ -23,21 +23,20 @@ impl fmt::Display for Headers {
 
 impl Headers {
     pub fn new() -> Self {
-        Headers{
-            headers: HashMap::new()
+        Headers {
+            headers: HashMap::new(),
         }
     }
 
     fn set(&mut self, key: String, value: String) {
-
         // RFC 9110 5.2 If field-name exists then we add the value with , separated
         self.headers
-        .entry(key.to_lowercase())
-        .and_modify(|current_value| {
-            let add_to_current = String::from(",") + &value;
-            current_value.push_str(&add_to_current);
-        }).
-        or_insert(value);
+            .entry(key.to_lowercase())
+            .and_modify(|current_value| {
+                let add_to_current = String::from(",") + &value;
+                current_value.push_str(&add_to_current);
+            })
+            .or_insert(value);
     }
 
     pub fn get(&self, key: &String) -> Option<&String> {
@@ -72,10 +71,8 @@ impl Headers {
         let mut done: bool = false;
         loop {
             match data[read..].find(SEPARATOR) {
-                Some(us) => {
-                    idx = us
-                },
-                None => break , // If there was no separator that means the request line was not full
+                Some(us) => idx = us,
+                None => break, // If there was no separator that means the request line was not full
             }
 
             // if SEPERATOR is at the start of the data, you've found the end of the headers and the request is done
@@ -92,7 +89,10 @@ impl Headers {
                     let field_value = parts.1.trim().to_string(); // RFC 9112 Field value can have any number of whitespaces
 
                     if !self.is_valid_field_name(&field_name) {
-                        return Err(anyhow!(format!("{} Field name: {} ", MALFORMED_FIELD_NAME, field_name)));
+                        return Err(anyhow!(format!(
+                            "{} Field name: {} ",
+                            MALFORMED_FIELD_NAME, field_name
+                        )));
                     }
 
                     read += data[read..read + idx].len() + SEPARATOR.len();

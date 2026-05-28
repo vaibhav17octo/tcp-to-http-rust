@@ -28,27 +28,33 @@ impl Read for SlowReader {
 #[cfg(test)]
 mod tests {
     use crate::SlowReader;
+    use anyhow::anyhow;
     use std::io::Cursor;
     use tcp_to_http::request::request_from_reader;
-    use anyhow::anyhow;
 
     #[test]
     fn test_request_from_reader() -> Result<(), anyhow::Error> {
-        let reader = Cursor::new("GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n");
+        let reader = Cursor::new(
+            "GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+        );
         let req = request_from_reader(reader)?;
 
         assert_eq!(req.request_line.method, "GET");
         assert_eq!(req.request_line.request_target, "/");
         assert_eq!(req.request_line.http_version, "1.1");
 
-        let reader = Cursor::new("GET /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n");
+        let reader = Cursor::new(
+            "GET /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+        );
         let req = request_from_reader(reader)?;
 
         assert_eq!(req.request_line.method, "GET");
         assert_eq!(req.request_line.request_target, "/coffee");
         assert_eq!(req.request_line.http_version, "1.1");
 
-        let reader = Cursor::new("/coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n");
+        let reader = Cursor::new(
+            "/coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
+        );
         let req = request_from_reader(reader);
         assert!(req.is_err());
 
@@ -87,19 +93,19 @@ mod tests {
         assert_eq!(req.request_line.method, "GET");
         assert_eq!(req.request_line.request_target, "/");
         assert_eq!(req.request_line.http_version, "1.1");
-        match req.headers.get(&"Host".to_string()){
+        match req.headers.get(&"Host".to_string()) {
             Some(val) => assert_eq!(val, "localhost:42069"),
-            None => return Err(anyhow!("Value not found"))
+            None => return Err(anyhow!("Value not found")),
         }
-        match req.headers.get(&"user-agent".to_string()){
+        match req.headers.get(&"user-agent".to_string()) {
             Some(val) => assert_eq!(val, "curl/7.81.0"),
-            None => return Err(anyhow!("Value not found"))
-        } 
-        match req.headers.get(&"accept".to_string()){
+            None => return Err(anyhow!("Value not found")),
+        }
+        match req.headers.get(&"accept".to_string()) {
             Some(val) => assert_eq!(val, "*/*"),
-            None => return Err(anyhow!("Value not found"))
-        } 
-        
+            None => return Err(anyhow!("Value not found")),
+        }
+
         let reader = SlowReader {
             data: b"GET / HTTP/1.1\r\n\r\n".to_vec(),
             pos: 0,
@@ -125,7 +131,8 @@ mod tests {
         assert!(result.is_err());
 
         let reader = SlowReader {
-            data: b"GET / HTTP/1.1\r\nAccept: text/html\r\nAccept: application/json\r\n\r\n".to_vec(),
+            data: b"GET / HTTP/1.1\r\nAccept: text/html\r\nAccept: application/json\r\n\r\n"
+                .to_vec(),
             pos: 0,
             read_size: 3,
         };
@@ -173,7 +180,6 @@ mod tests {
         let req = request_from_reader(reader)?;
         assert_eq!(req.body.get_body(), b"hello world!\n");
 
-
         let reader = SlowReader {
             data: b"POST /submit HTTP/1.1\r\nHost: localhost:42069\r\nContent-Length: 20\r\n\r\npartial content\n".to_vec(),
             pos: 0,
@@ -184,7 +190,8 @@ mod tests {
         assert!(req.is_err());
 
         let reader = SlowReader {
-            data: b"POST /submit HTTP/1.1\r\nHost: localhost:42069\r\nContent-Length: 0\r\n\r\n".to_vec(),
+            data: b"POST /submit HTTP/1.1\r\nHost: localhost:42069\r\nContent-Length: 0\r\n\r\n"
+                .to_vec(),
             pos: 0,
             read_size: 3,
         };
