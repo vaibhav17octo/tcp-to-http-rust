@@ -9,34 +9,34 @@ mod tests {
     #[test]
     async fn test_body() -> Result<(), anyhow::Error> {
         // Valid Body and content length
-        let reader = SlowReader {
+        let mut reader = SlowReader {
             data: b"POST /submit HTTP/1.1\r\nHost: localhost:42069\r\nContent-Length: 13\r\n\r\nhello world!\n".to_vec(),
             pos: 0,
             read_size: 3,
         };
 
-        let req = request_from_reader(reader).await?;
+        let req = request_from_reader(&mut reader).await?;
         assert_eq!(req.body.get_body(), b"hello world!\n");
 
         // Body length less than content length
-        let reader = SlowReader {
+        let mut reader = SlowReader {
             data: b"POST /submit HTTP/1.1\r\nHost: localhost:42069\r\nContent-Length: 20\r\n\r\npartial content\n".to_vec(),
             pos: 0,
             read_size: 3,
         };
 
-        let req = request_from_reader(reader).await;
+        let req = request_from_reader(&mut reader).await;
         assert!(req.is_err());
 
         // 0 content length
-        let reader = SlowReader {
+        let mut reader = SlowReader {
             data: b"POST /submit HTTP/1.1\r\nHost: localhost:42069\r\nContent-Length: 0\r\n\r\n"
                 .to_vec(),
             pos: 0,
             read_size: 3,
         };
 
-        let req = request_from_reader(reader).await?;
+        let req = request_from_reader(&mut reader).await?;
         assert_eq!(req.body.get_body(), b"");
 
         Ok(())

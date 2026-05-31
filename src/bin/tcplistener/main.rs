@@ -7,9 +7,9 @@ async fn main() -> Result<(), anyhow::Error> {
     let ln = TcpListener::bind("127.0.0.1:42069").await?;
 
     loop {
-        let (stream, _addr) = ln.accept().await?;
+        let (mut stream, _addr) = ln.accept().await?;
         
-        let request = request_from_reader(stream).await?;
+        let request = request_from_reader(&mut stream).await?;
         println!("{}", &request);
     }
 }

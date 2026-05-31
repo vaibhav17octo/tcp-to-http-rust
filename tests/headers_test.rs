@@ -72,13 +72,13 @@ mod tests {
 
         // Tests from Request
         // Valid Header
-        let reader = SlowReader {
+        let mut reader = SlowReader {
             data: b"GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n".to_vec(),
             pos: 0,
             read_size: 3
         };
 
-        let req = request_from_reader(reader).await?;
+        let req = request_from_reader(&mut reader).await?;
 
         assert_eq!(req.request_line.method, "GET");
         assert_eq!(req.request_line.request_target, "/");
@@ -97,13 +97,13 @@ mod tests {
         }
 
         // No headers
-        let reader = SlowReader {
+        let mut reader = SlowReader {
             data: b"GET / HTTP/1.1\r\n\r\n".to_vec(),
             pos: 0,
             read_size: 3,
         };
 
-        let req = request_from_reader(reader).await?;
+        let req = request_from_reader(&mut reader).await?;
 
         assert_eq!(req.request_line.method, "GET");
         assert_eq!(req.request_line.request_target, "/");
@@ -112,25 +112,25 @@ mod tests {
         assert!(req.headers.get(&"host".to_string()).is_none());
 
         // Invalid header
-        let reader = SlowReader {
+        let mut reader = SlowReader {
             data: b"GET / HTTP/1.1\r\nHost localhost:42069\r\n\r\n".to_vec(),
             pos: 0,
             read_size: 3,
         };
 
-        let result = request_from_reader(reader).await;
+        let result = request_from_reader(&mut reader).await;
 
         assert!(result.is_err());
 
         // Multiple values of a header
-        let reader = SlowReader {
+        let mut reader = SlowReader {
             data: b"GET / HTTP/1.1\r\nAccept: text/html\r\nAccept: application/json\r\n\r\n"
                 .to_vec(),
             pos: 0,
             read_size: 3,
         };
 
-        let req = request_from_reader(reader).await?;
+        let req = request_from_reader(&mut reader).await?;
 
         match req.headers.get(&"accept".to_string()) {
             Some(val) => assert_eq!(val, "text/html,application/json"),
@@ -138,13 +138,13 @@ mod tests {
         }
 
         // Case insensitive header
-        let reader = SlowReader {
+        let mut reader = SlowReader {
             data: b"GET / HTTP/1.1\r\nHoSt: localhost:42069\r\nUsEr-AgEnT: curl\r\n\r\n".to_vec(),
             pos: 0,
             read_size: 3,
         };
 
-        let req = request_from_reader(reader).await?;
+        let req = request_from_reader(&mut reader).await?;
 
         match req.headers.get(&"host".to_string()) {
             Some(val) => assert_eq!(val, "localhost:42069"),
@@ -157,13 +157,13 @@ mod tests {
         }
 
         // Invalid ending
-        let reader = SlowReader {
+        let mut reader = SlowReader {
             data: b"GET / HTTP/1.1\r\nHoSt: localhost:42069\r\nUsEr-AgEnT: curl\r\n".to_vec(),
             pos: 0,
             read_size: 3,
         };
 
-        let req = request_from_reader(reader).await;
+        let req = request_from_reader(&mut reader).await;
         assert!(req.is_err());
 
         Ok(())
