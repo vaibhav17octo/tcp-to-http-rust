@@ -5,8 +5,9 @@ mod tests {
     use crate::slow_reader::SlowReader;
     use tcp_to_http::request::request_from_reader;
 
+    #[tokio::main]
     #[test]
-    fn test_body() -> Result<(), anyhow::Error> {
+    async fn test_body() -> Result<(), anyhow::Error> {
         // Valid Body and content length
         let reader = SlowReader {
             data: b"POST /submit HTTP/1.1\r\nHost: localhost:42069\r\nContent-Length: 13\r\n\r\nhello world!\n".to_vec(),
@@ -14,7 +15,7 @@ mod tests {
             read_size: 3,
         };
 
-        let req = request_from_reader(reader)?;
+        let req = request_from_reader(reader).await?;
         assert_eq!(req.body.get_body(), b"hello world!\n");
 
         // Body length less than content length
@@ -24,7 +25,7 @@ mod tests {
             read_size: 3,
         };
 
-        let req = request_from_reader(reader);
+        let req = request_from_reader(reader).await;
         assert!(req.is_err());
 
         // 0 content length
@@ -35,7 +36,7 @@ mod tests {
             read_size: 3,
         };
 
-        let req = request_from_reader(reader)?;
+        let req = request_from_reader(reader).await?;
         assert_eq!(req.body.get_body(), b"");
 
         Ok(())

@@ -6,12 +6,13 @@ mod tests {
     use std::io::Cursor;
     use tcp_to_http::request::request_from_reader;
 
+    #[tokio::main]
     #[test]
-    fn test_request_line() -> Result<(), anyhow::Error> {
+    async fn test_request_line() -> Result<(), anyhow::Error> {
         let reader = Cursor::new(
             "GET / HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
         );
-        let req = request_from_reader(reader)?;
+        let req = request_from_reader(reader).await?;
 
         assert_eq!(req.request_line.method, "GET");
         assert_eq!(req.request_line.request_target, "/");
@@ -20,7 +21,7 @@ mod tests {
         let reader = Cursor::new(
             "GET /coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
         );
-        let req = request_from_reader(reader)?;
+        let req = request_from_reader(reader).await?;
 
         assert_eq!(req.request_line.method, "GET");
         assert_eq!(req.request_line.request_target, "/coffee");
@@ -29,7 +30,7 @@ mod tests {
         let reader = Cursor::new(
             "/coffee HTTP/1.1\r\nHost: localhost:42069\r\nUser-Agent: curl/7.81.0\r\nAccept: */*\r\n\r\n",
         );
-        let req = request_from_reader(reader);
+        let req = request_from_reader(reader).await;
         assert!(req.is_err());
 
         let reader = SlowReader {
@@ -38,7 +39,7 @@ mod tests {
             read_size: 3
         };
         println!("{}", reader.data.len());
-        let req = request_from_reader(reader)?;
+        let req = request_from_reader(reader).await?;
 
         assert_eq!(req.request_line.method, "GET");
         assert_eq!(req.request_line.request_target, "/");
@@ -50,7 +51,7 @@ mod tests {
             read_size: 1
         };
         println!("{}", reader.data.len());
-        let req = request_from_reader(reader)?;
+        let req = request_from_reader(reader).await?;
 
         assert_eq!(req.request_line.method, "GET");
         assert_eq!(req.request_line.request_target, "/coffee");

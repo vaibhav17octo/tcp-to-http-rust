@@ -5,6 +5,7 @@ pub mod request_line;
 use anyhow::anyhow;
 use core::fmt;
 use std::io::Read;
+use tokio::io::{AsyncReadExt, AsyncRead};
 
 use body::Body;
 use headers::Headers;
@@ -130,13 +131,13 @@ impl Request {
     }
 }
 
-pub fn request_from_reader(mut f: impl Read) -> Result<Request, anyhow::Error> {
+pub async fn request_from_reader(mut f: impl AsyncRead + Unpin) -> Result<Request, anyhow::Error> {
     let mut req = Request::new();
     let mut buffer = [0; 1024];
     let mut buffer_length = 0;
 
     while !req.done() {
-        let n = f.read(&mut buffer[buffer_length..])?; // n is the number of bytes read from f i.e. our connection/file etc
+        let n = f.read(&mut buffer[buffer_length..]).await?; // n is the number of bytes read from f i.e. our connection/file etc
 
         if n == 0 && !req.done() {
             return Err(anyhow!("{}", MALFORMED_REQUEST));

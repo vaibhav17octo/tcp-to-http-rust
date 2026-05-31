@@ -7,8 +7,9 @@ mod tests {
     use tcp_to_http::request::headers;
     use tcp_to_http::request::request_from_reader;
 
+    #[tokio::main]
     #[test]
-    fn test_header() -> Result<(), anyhow::Error> {
+    async fn test_header() -> Result<(), anyhow::Error> {
         // Valid Header
         let mut http_headers = headers::Headers::new();
         let data = b"Host: localhost:42069\r\n\r\n";
@@ -77,7 +78,7 @@ mod tests {
             read_size: 3
         };
 
-        let req = request_from_reader(reader)?;
+        let req = request_from_reader(reader).await?;
 
         assert_eq!(req.request_line.method, "GET");
         assert_eq!(req.request_line.request_target, "/");
@@ -102,7 +103,7 @@ mod tests {
             read_size: 3,
         };
 
-        let req = request_from_reader(reader)?;
+        let req = request_from_reader(reader).await?;
 
         assert_eq!(req.request_line.method, "GET");
         assert_eq!(req.request_line.request_target, "/");
@@ -117,7 +118,7 @@ mod tests {
             read_size: 3,
         };
 
-        let result = request_from_reader(reader);
+        let result = request_from_reader(reader).await;
 
         assert!(result.is_err());
 
@@ -129,7 +130,7 @@ mod tests {
             read_size: 3,
         };
 
-        let req = request_from_reader(reader)?;
+        let req = request_from_reader(reader).await?;
 
         match req.headers.get(&"accept".to_string()) {
             Some(val) => assert_eq!(val, "text/html,application/json"),
@@ -143,7 +144,7 @@ mod tests {
             read_size: 3,
         };
 
-        let req = request_from_reader(reader)?;
+        let req = request_from_reader(reader).await?;
 
         match req.headers.get(&"host".to_string()) {
             Some(val) => assert_eq!(val, "localhost:42069"),
@@ -162,7 +163,7 @@ mod tests {
             read_size: 3,
         };
 
-        let req = request_from_reader(reader);
+        let req = request_from_reader(reader).await;
         assert!(req.is_err());
 
         Ok(())
