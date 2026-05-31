@@ -28,6 +28,15 @@ impl Headers {
         }
     }
 
+    // TO-DO Create a response specific header type and move it to a different module
+    pub fn default_response_headers(content_len: usize) -> Self {
+        let mut headers = Headers::new();
+        headers.set(String::from("Content-Length"),content_len.to_string());
+        headers.set(String::from("Connection"), String::from("close"));
+        headers.set(String::from("Content-Type"), String::from("text/plain"));
+        headers
+    }
+
     fn set(&mut self, key: String, value: String) {
         // RFC 9110 5.2 If field-name exists then we add the value with , separated
         self.headers

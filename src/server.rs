@@ -2,6 +2,11 @@ use anyhow::anyhow;
 use tokio::io::AsyncWriteExt;
 use tokio::net::{TcpListener, TcpStream};
 
+pub mod response;
+
+use response::{write_headers, write_status_line, StatusCode};
+use crate::request::headers::Headers;
+
 pub struct Server {
     closed: bool,
 }
@@ -24,9 +29,10 @@ impl Server {
     }
 
     async fn listen(&self, mut stream: TcpStream) -> Result<(), anyhow::Error> {
-        let response = b"HTTP/1.1 200 OK\r\nContent-Type: text/plain\r\nContent-Length: 13\r\n\r\nHello World!\n";
-        stream.write(response).await?;
+        write_status_line(&mut stream, StatusCode::OK).await?;
+        write_headers(&mut stream, Headers::default_response_headers(0)).await?;
         stream.shutdown().await?;
+
         Ok(())
     }
 
