@@ -10,9 +10,9 @@ pub enum StatusCode {
     InternalServerError = 500
 }
 
-pub async fn write_status_line(stream: &mut TcpStream, statusCode: StatusCode) -> Result<(), anyhow::Error> {
+pub async fn write_status_line(stream: &mut TcpStream, status_code: StatusCode) -> Result<(), anyhow::Error> {
     let start_line: Vec<u8>;
-    match statusCode {
+    match status_code {
         StatusCode::OK => start_line = b"HTTP/1.1 200 OK\r\n".to_vec(),
         StatusCode::BadRequest => start_line = b"HTTP/1.1 400 Bad Request\r\n".to_vec(),
         StatusCode::InternalServerError => start_line = b"HTTP/1.1 500 Internal Server Error\r\n".to_vec()
@@ -44,6 +44,11 @@ pub async fn write_headers(stream: &mut TcpStream, headers: Headers) -> Result<(
 
     let write_header = format!("Content-Length:{}\r\nConnection:{}\r\nContent_Type:{}\r\n\r\n", content_length, connection, content_type).into_bytes();
     stream.write(&write_header).await?;
+    Ok(())
+}
+
+pub async fn write_body(stream: &mut TcpStream, body: Vec<u8>) -> Result<(), anyhow::Error> {
+    stream.write(&body).await?;
     Ok(())
 }
 

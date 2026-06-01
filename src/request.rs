@@ -4,7 +4,6 @@ pub mod request_line;
 
 use anyhow::anyhow;
 use core::fmt;
-use std::io::Read;
 use tokio::io::{AsyncReadExt, AsyncRead};
 
 use body::Body;
