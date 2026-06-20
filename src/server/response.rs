@@ -51,12 +51,11 @@ where
     }
 
     pub async fn write_status_line(&mut self, status_code: StatusCode) -> Result<(), anyhow::Error> {
-        let start_line: Vec<u8>;
-        match status_code {
-            StatusCode::OK => start_line = b"HTTP/1.1 200 OK\r\n".to_vec(),
-            StatusCode::BadRequest => start_line = b"HTTP/1.1 400 Bad Request\r\n".to_vec(),
-            StatusCode::InternalServerError => start_line = b"HTTP/1.1 500 Internal Server Error\r\n".to_vec()
-        }
+        let start_line = match status_code {
+            StatusCode::OK => b"HTTP/1.1 200 OK\r\n".as_slice(),
+            StatusCode::BadRequest => b"HTTP/1.1 400 Bad Request\r\n".as_slice(),
+            StatusCode::InternalServerError => b"HTTP/1.1 500 Internal Server Error\r\n".as_slice()
+        };
 
         self.writer.write_all(&start_line).await?;
 
@@ -82,8 +81,8 @@ where
             None => return Err(anyhow!(format!("No content length in headers")))
         }
 
-        let write_header = format!("Content-Length:{}\r\nConnection:{}\r\nContent_Type:{}\r\n\r\n", content_length, connection, content_type).into_bytes();
-        self.writer.write_all(&write_header).await?;
+        let write_header = format!("Content-Length:{}\r\nConnection:{}\r\nContent_Type:{}\r\n\r\n", content_length, connection, content_type);
+        self.writer.write_all(&write_header.as_bytes()).await?;
         Ok(())
     }
 

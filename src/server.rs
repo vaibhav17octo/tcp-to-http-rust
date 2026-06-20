@@ -38,13 +38,13 @@ impl Server {
         self.closed = true;
     }
 
-    async fn listen(&self, mut stream: TcpStream) -> Result<(), anyhow::Error> {
+    async fn listen(handler: Handler, mut stream: TcpStream) -> Result<(), anyhow::Error> {
         let request = request_from_reader(&mut stream).await?;
         println!("{}", request);
 
         let mut writer = Writer::new(stream);
 
-        match (self.handler)(request) {
+        match (handler)(request) {
             Ok(response) => {
                 writer.write_status_line(response.status).await?;
                 writer.write_headers(response.headers).await?;
@@ -64,11 +64,16 @@ impl Server {
     }
 
     async fn run_server(&self, listener: TcpListener) -> Result<(), anyhow::Error> {
+        let handler = self.handler;
         while !self.closed {
             match listener.accept().await {
                 Ok((stream, _addr)) => {
-                    self.listen(stream).await?;
-                    println!("Processed one connection");
+                    tokio::spawn(async move {
+                        match Self::listen(handler, stream).await {
+                            Ok(_) => Ok(()),
+                            Err(e) => return Err(anyhow!(format!("{e}")))
+                        }
+                    });                    
                 }
                 Err(e) => return Err(anyhow!(format!("{e}"))),
             }
