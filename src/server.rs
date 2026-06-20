@@ -1,14 +1,12 @@
 use anyhow::anyhow;
-use tokio::io::AsyncWriteExt;
 use tokio::net::{TcpListener, TcpStream};
-use std::io::Write;
 pub mod response;
 
-use response::{write_headers, write_status_line, write_body, StatusCode};
+use response::{StatusCode, Writer, Response};
 use crate::request::headers::Headers;
 use crate::request::{Request, request_from_reader};
 
-pub type Handler = fn(&mut dyn Write, Request) -> Result<(), HandlerError>;
+pub type Handler = fn(Request) -> Result<Response, HandlerError>;
 
 pub struct Server {
     closed: bool,
@@ -43,23 +41,24 @@ impl Server {
     async fn listen(&self, mut stream: TcpStream) -> Result<(), anyhow::Error> {
         let request = request_from_reader(&mut stream).await?;
         println!("{}", request);
-        let mut body: Vec<u8>= vec![];
 
-        match (self.handler)(&mut body, request) {
-            Ok(()) => {
-                let headers = Headers::default_response_headers(body.len());
-                write_status_line(&mut stream, StatusCode::OK).await?;
-                write_headers(&mut stream, headers).await?;
-                write_body(&mut stream, body).await?;
+        let mut writer = Writer::new(stream);
+
+        match (self.handler)(request) {
+            Ok(response) => {
+                writer.write_status_line(response.status).await?;
+                writer.write_headers(response.headers).await?;
+                writer.write_body(response.body).await?;
             },
             Err(e) => {
                 let headers = Headers::default_response_headers(e.message.len());
-                write_status_line(&mut stream, e.status).await?;
-                write_headers(&mut stream, headers).await?;
-                write_body(&mut stream, e.message).await?;
+                writer.write_status_line(e.status).await?;
+                writer.write_headers(headers).await?;
+                writer.write_body(e.message).await?;
             }
         }
-        stream.shutdown().await?;
+
+        writer.shutdown().await?;
 
         Ok(())
     }
