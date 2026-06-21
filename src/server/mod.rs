@@ -1,11 +1,15 @@
+pub mod headers;
+pub mod request;
+pub mod response;
+
 use anyhow::anyhow;
 use tokio::io::AsyncWrite;
 use tokio::net::{TcpListener, TcpStream};
-pub mod response;
 
-use crate::request::headers::Headers;
-use crate::request::{Request, request_from_reader};
-use response::{Response, StatusCode, Writer};
+use headers::Headers;
+use request::{Request, request_from_reader};
+use response::writer::Writer;
+use response::{Response, StatusCode};
 
 use std::pin::Pin;
 

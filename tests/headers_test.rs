@@ -4,8 +4,8 @@ mod slow_reader;
 mod tests {
     use crate::slow_reader::SlowReader;
     use anyhow::anyhow;
-    use tcp_to_http::request::headers;
-    use tcp_to_http::request::request_from_reader;
+    use tcp_to_http::server::headers;
+    use tcp_to_http::server::request::request_from_reader;
 
     #[tokio::main]
     #[test]

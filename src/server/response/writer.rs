@@ -1,32 +1,8 @@
 use tokio::io::AsyncWrite;
 use tokio::io::AsyncWriteExt;
 
-use crate::request::headers::Headers;
-
-pub enum StatusCode {
-    OK = 200,
-    BadRequest = 400,
-    InternalServerError = 500,
-}
-
-pub struct Response {
-    pub status: StatusCode,
-    pub headers: Headers,
-    pub body: Vec<u8>,
-    pub trailers: Option<Headers>
-}
-
-impl Response {
-    pub fn new(status: StatusCode, headers: Headers, body: Vec<u8>, trailers: Option<Headers>) -> Self {
-        Response {
-            status: status,
-            headers: headers,
-            body: body,
-            trailers: trailers
-        }
-    }
-}
-
+use crate::server::headers::Headers;
+use crate::server::response::StatusCode;
 // If we need this to not use generic but create a Trait object then we can use the following instead
 // Pin<Box<dyn AsyncWrite + Send>>
 pub struct Writer<W>

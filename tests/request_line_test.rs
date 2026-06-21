@@ -4,7 +4,7 @@ mod slow_reader;
 mod tests {
     use crate::slow_reader::SlowReader;
     use std::io::Cursor;
-    use tcp_to_http::request::request_from_reader;
+    use tcp_to_http::server::request::request_from_reader;
 
     #[tokio::main]
     #[test]

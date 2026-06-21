@@ -1,13 +1,12 @@
 pub mod body;
-pub mod headers;
 pub mod request_line;
 
 use anyhow::anyhow;
 use core::fmt;
 use tokio::io::{AsyncRead, AsyncReadExt};
 
+use crate::server::Headers;
 use body::Body;
-use headers::Headers;
 use request_line::RequestLine;
 
 use crate::config::ERROR_STATE;
