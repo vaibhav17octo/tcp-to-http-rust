@@ -1,6 +1,6 @@
 use anyhow;
-use tokio::net::TcpListener;
 use tcp_to_http::request::request_from_reader;
+use tokio::net::TcpListener;
 
 #[tokio::main]
 async fn main() -> Result<(), anyhow::Error> {
@@ -8,7 +8,7 @@ async fn main() -> Result<(), anyhow::Error> {
 
     loop {
         let (mut stream, _addr) = ln.accept().await?;
-        
+
         let request = request_from_reader(&mut stream).await?;
         println!("{}", &request);
     }

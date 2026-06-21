@@ -11,8 +11,7 @@ impl AsyncRead for SlowReader {
         mut self: std::pin::Pin<&mut Self>,
         _cx: &mut std::task::Context<'_>,
         buf: &mut tokio::io::ReadBuf<'_>,
-    ) -> std::task::Poll<io::Result<()>>
-    {
+    ) -> std::task::Poll<io::Result<()>> {
         if self.pos >= self.data.len() {
             return std::task::Poll::Ready(Ok(())); // Reached EOL
         }
