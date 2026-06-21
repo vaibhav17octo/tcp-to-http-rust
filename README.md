@@ -6,21 +6,44 @@ Based on [ThePrimeagen's TCP to HTTP](https://www.boot.dev/lessons/b0cebf37-7151
 I made this repository in order to learn Rust and understand the workings of HTTP protocol from the Layer 4 TCP protocol perspective.
 
 ## Usage
-After cloning the repository, you can use the following command to run the TCP listener which parses a HTTP request
+After cloning the repository, you can use the following command to run the HTTP Server which parses HTTP requests
 
-The command runs a Tcp listener on your localhost on port 42069.
+The command runs a HTTP Server on your localhost on port 42069.
 ```bash
-cargo run --bin tcplistener
+cargo run --bin httpserver
 ```
 
-Open another terminal and try to make an HTTP request using Curl on the TCP listener:
+Open another terminal and try to make an HTTP request using Curl the HTTP Server:
 ```bash
-curl http://localhost:42069/use-neovim-btw
+curl http://localhost:42069/httpbin/stream/10
 ``` 
 
-You should see an empty response but in the tcplistener terminal you should see the parsed request.
+You should see 10 Json objects returned to you.
 
 ## How it works
+
+### Server
+We have a [Server](./src/server/mod.rs) which accepts a PORT and a handler function to handle your connection. (Check [httpserver](./src/bin/httpserver/main.rs) for example use case).
+You can then send HTTP requests to the mentioned port.
+
+- The server does support chunked encoding. However, will require `"transfer-encoding": "chunked"` header. (Example can found in [my_handler](./src/bin/httpserver/main.rs))
+- The handler can handle async functions like querying a database, a website etc.
+
+#### Example handler
+```
+fn my_handler(request: Request) -> HandlerFuture {
+    Box::pin(async move {
+        let mut status = StatusCode::OK;
+        let mut body = b"Hello hello".to_vec();
+        let mut headers = Headers::default_response_headers(body.len());
+        let mut trailers: Option<Headers> = None;
+
+        Ok(Response::new(status, headers, body, trailers))
+    })
+}
+```
+
+### TCPListener
 We have the [tcplistener](./src/bin/tcplistener/main.rs) which creates a Tcp listener and passes the TCP stream to a function `request_from_reader` defined in [request module](./src/request.rs) which returns a Request sruct.
 
 `request_from_reader` function reads from the TCP stream at most 1024 bytes at a time and parses the request with the parse function defined in Request struct.
