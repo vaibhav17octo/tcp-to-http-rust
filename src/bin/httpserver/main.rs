@@ -10,6 +10,7 @@ use tcp_to_http::server::response::StatusCode;
 use tokio::signal;
 use sha2::Sha256;
 
+use std::fs;
 use reqwest::get;
 
 const PORT: u16 = 42069;
@@ -113,6 +114,22 @@ fn my_handler(request: Request) -> HandlerFuture {
               trailers.set("X-Content-Length".to_string(), body.len().to_string());
             }
 
+        } else if request.request_line.request_target == "/video" {
+
+          body = match fs::read("PathToVideo") {
+            Ok(d) => d,
+            Err(e) => {
+              return Err(HandlerError {
+                        status: StatusCode::InternalServerError,
+                        message: format!("Couldn't read video: {}", e)
+                            .as_bytes()
+                            .to_vec(),
+                    });
+            }
+          };
+
+          headers.replace("content-type".to_string(), "video/mp4".to_string());
+          headers.replace("content-length".to_string(), body.len().to_string());
         }
 
         Ok(Response::new(status, headers, body, trailers))

@@ -49,9 +49,7 @@ impl Server {
         W: AsyncWrite + Unpin,
     {
         let chunks = body.chunks(32);
-        println!("Doing chunk encoding");
         for chunk in chunks {
-            println!("Chunk:{:?}", chunk);
             writer
                 .write_body(format!("{:X}\r\n", chunk.len()).into_bytes())
                 .await?;
@@ -90,7 +88,6 @@ impl Server {
                         writer.write_body(b"\r\n".to_vec()).await?;
                     }
                     None => {
-                        println!("Body not chunked:{:?}", response.body);
                         writer.write_body(response.body).await?;
                     }
                 }
