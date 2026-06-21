@@ -1,11 +1,14 @@
 use anyhow::anyhow;
-use tcp_to_http::server;
-use tcp_to_http::server::response::Response;
-use tokio::signal;
 use tcp_to_http::request::Request;
-use tcp_to_http::server::response::StatusCode;
-use tcp_to_http::server::HandlerError;
 use tcp_to_http::request::headers::Headers;
+use tcp_to_http::server;
+use tcp_to_http::server::HandlerError;
+use tcp_to_http::server::HandlerFuture;
+use tcp_to_http::server::response::Response;
+use tcp_to_http::server::response::StatusCode;
+use tokio::signal;
+
+use reqwest::get;
 
 const PORT: u16 = 42069;
 
@@ -22,7 +25,8 @@ fn respond_400() -> Vec<u8> {
     <h1>Bad Request</h1>
     <p>Your request honestly kinda sucked.</p>
   </body>
-</html>".to_vec()
+</html>"
+        .to_vec()
 }
 
 fn respond_500() -> Vec<u8> {
@@ -34,7 +38,8 @@ fn respond_500() -> Vec<u8> {
     <h1>Internal Server Error</h1>
     <p>Okay, you know what? This one is on me.</p>
   </body>
-</html>".to_vec()
+</html>"
+        .to_vec()
 }
 
 fn respond_200() -> Vec<u8> {
@@ -46,27 +51,57 @@ fn respond_200() -> Vec<u8> {
     <h1>Success!</h1>
     <p>Your request was an absolute banger.</p>
   </body>
-</html>".to_vec()
+</html>"
+        .to_vec()
 }
 
-fn my_handler(request: Request) -> Result<Response, HandlerError> {
+fn my_handler(request: Request) -> HandlerFuture {
+    Box::pin(async move {
+        let mut status = StatusCode::OK;
+        let mut body = respond_200();
+        let mut headers = Headers::default_response_headers(body.len());
 
-    let mut status = StatusCode::OK;
-    let mut body = respond_200();
+        if request.request_line.request_target == "/yourproblem" {
+            status = StatusCode::BadRequest;
+            body = respond_400();
+            headers.replace("content-length".to_string(), body.len().to_string());
+        } else if request.request_line.request_target == "/myproblem" {
+            status = StatusCode::InternalServerError;
+            body = respond_500();
+            headers.replace("content-length".to_string(), body.len().to_string());
+        } else if request.request_line.request_target.starts_with("/httpbin/") {
+            let target = request.request_line.request_target["/httpbin/".len()..].to_string();
+            match get(format!("https://httpbin.org/{}", target)).await {
+                Ok(response) => match response.bytes().await {
+                    Ok(b) => {
+                        println!("Body from response:{:#?}", b);
+                        body = b.to_vec()
+                    }
+                    Err(e) => {
+                        return Err(HandlerError {
+                            status: StatusCode::InternalServerError,
+                            message: format!("Couldn't convert response to bytes: {}", e)
+                                .as_bytes()
+                                .to_vec(),
+                        });
+                    }
+                },
+                Err(e) => {
+                    return Err(HandlerError {
+                        status: StatusCode::InternalServerError,
+                        message: format!("Couldn't reach out to the URL: {}", e)
+                            .as_bytes()
+                            .to_vec(),
+                    });
+                }
+            };
 
-    if request.request_line.request_target == "/yourproblem" {
-        status = StatusCode::BadRequest;
-        body = respond_400();
-    }
-    else if request.request_line.request_target == "/myproblem" {
-        status = StatusCode::InternalServerError;
-        body = respond_500();
-    }
-    
-    let headers = Headers::default_response_headers(body.len());
+            headers.delete("content-length".to_string());
+            headers.set("transfer-encoding".to_string(), "chunked".to_string());
+        }
 
-    Ok(Response::new(status, headers, body))
-    
+        Ok(Response::new(status, headers, body))
+    })
 }
 
 #[tokio::main]

@@ -25,6 +25,14 @@ We have the [tcplistener](./src/bin/tcplistener/main.rs) which creates a Tcp lis
 
 `request_from_reader` function reads from the TCP stream at most 1024 bytes at a time and parses the request with the parse function defined in Request struct.
 
+## Async Handlers
+
+Initially, request handlers were synchronous functions returning a Response directly. This worked for simple request processing, but became limiting when a handler needed to perform asynchronous operations such as making HTTP requests with reqwest, querying a database, or reading files asynchronously.
+
+To support asynchronous handlers, the server stores handlers as functions that return a Future. Because every async fn generates a unique anonymous future type, the concrete future type is erased behind a dyn Future trait object. The future is heap allocated using Box, pinned using Pin so it can be safely polled by the async runtime, and marked Send so Tokio can move it between worker threads if necessary.
+
+This allows handlers to perform non-blocking I/O while integrating cleanly with the Tokio runtime and the server's concurrent request processing model.
+
 ## References
 - [Message format RFC 9112](https://datatracker.ietf.org/doc/html/rfc9112#name-message-format)
 - [Parsing the request line RFC 9110](https://datatracker.ietf.org/doc/html/rfc9112#name-message-parsing)

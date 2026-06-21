@@ -31,13 +31,14 @@ impl Headers {
     // TO-DO Create a response specific header type and move it to a different module
     pub fn default_response_headers(content_len: usize) -> Self {
         let mut headers = Headers::new();
-        headers.set(String::from("Content-Length"),content_len.to_string());
+        headers.set(String::from("Content-Length"), content_len.to_string());
         headers.set(String::from("Connection"), String::from("close"));
         headers.set(String::from("Content-Type"), String::from("text/plain"));
         headers
     }
 
-    fn set(&mut self, key: String, value: String) {
+    // Think of a name change to the function as currently it doesn't do replace
+    pub fn set(&mut self, key: String, value: String) {
         // RFC 9110 5.2 If field-name exists then we add the value with , separated
         self.headers
             .entry(key.to_lowercase())
@@ -48,9 +49,29 @@ impl Headers {
             .or_insert(value);
     }
 
+    pub fn replace(&mut self, key: String, value: String) {
+        self.headers.entry(key.to_lowercase()).insert_entry(value);
+    }
+
+    pub fn delete(&mut self, key: String) -> Option<String> {
+        self.headers.remove(&key)
+    }
+
     pub fn get(&self, key: &String) -> Option<&String> {
         let value = self.headers.get(&key.to_lowercase());
         return value;
+    }
+
+    pub fn write_headers(&self) -> Vec<u8> {
+        let mut http_header: Vec<u8> = vec![];
+
+        for (key, val) in &self.headers {
+            http_header.append(&mut format!("{}:{}\r\n", key, val).as_bytes().to_vec());
+        }
+
+        http_header.append(&mut b"\r\n".to_vec());
+
+        http_header
     }
 
     pub fn is_valid_field_name(&self, field_name: &String) -> bool {
