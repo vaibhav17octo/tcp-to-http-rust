@@ -115,9 +115,8 @@ impl Server {
             match listener.accept().await {
                 Ok((stream, _addr)) => {
                     tokio::spawn(async move {
-                        match Self::listen(handler, stream).await {
-                            Ok(_) => Ok(()),
-                            Err(e) => return Err(anyhow!(format!("{e}"))),
+                        if let Err(e) = Self::listen(handler, stream).await {
+                            eprintln!("Connection error: {:#}", e);
                         }
                     });
                 }
