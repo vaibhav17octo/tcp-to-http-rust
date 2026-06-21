@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use sha2::Digest;
 use tcp_to_http::request::Request;
 use tcp_to_http::request::headers::Headers;
 use tcp_to_http::server;
@@ -7,6 +8,7 @@ use tcp_to_http::server::HandlerFuture;
 use tcp_to_http::server::response::Response;
 use tcp_to_http::server::response::StatusCode;
 use tokio::signal;
+use sha2::Sha256;
 
 use reqwest::get;
 
@@ -60,6 +62,7 @@ fn my_handler(request: Request) -> HandlerFuture {
         let mut status = StatusCode::OK;
         let mut body = respond_200();
         let mut headers = Headers::default_response_headers(body.len());
+        let mut trailers: Option<Headers> = None;
 
         if request.request_line.request_target == "/yourproblem" {
             status = StatusCode::BadRequest;
@@ -98,9 +101,21 @@ fn my_handler(request: Request) -> HandlerFuture {
 
             headers.delete("content-length".to_string());
             headers.set("transfer-encoding".to_string(), "chunked".to_string());
+            headers.set("trailer".to_string(), "X-Content-SHA256".to_string());
+            headers.set("trailer".to_string(), "X-Content-Length".to_string());
+
+            let checksum = hex::encode(Sha256::digest(&body).to_vec());
+
+            trailers = Some(Headers::new());
+
+            if let Some(trailers) = &mut trailers {
+              trailers.set("X-Content-SHA256".to_string(), checksum);
+              trailers.set("X-Content-Length".to_string(), body.len().to_string());
+            }
+
         }
 
-        Ok(Response::new(status, headers, body))
+        Ok(Response::new(status, headers, body, trailers))
     })
 }
 

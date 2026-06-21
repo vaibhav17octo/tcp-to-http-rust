@@ -58,7 +58,7 @@ impl Server {
             writer.write_body(chunk.to_vec()).await?;
             writer.write_body(b"\r\n".to_vec()).await?;
         }
-        writer.write_body(b"0\r\n\r\n".to_vec()).await?;
+        writer.write_body(b"0\r\n".to_vec()).await?;
         Ok(())
     }
 
@@ -80,6 +80,14 @@ impl Server {
                         } else {
                             return Err(anyhow!("Chunked is the only supported transfer-encoding"));
                         }
+
+                        // Write trailers if they exist
+                        match response.trailers {
+                            Some(trailers) => writer.write_headers(&trailers).await?,
+                            None => {}
+                        }
+
+                        writer.write_body(b"\r\n".to_vec()).await?;
                     }
                     None => {
                         println!("Body not chunked:{:?}", response.body);
